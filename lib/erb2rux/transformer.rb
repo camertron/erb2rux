@@ -107,7 +107,7 @@ module Erb2Rux
 
             child_loc = cur.node.location.expression
 
-            if cur.stype == :code && !cur.in_code
+            if cur.stype == :code && !cur.in_code && !cur.replacement.start_with?('<')
               cur.replacement = "{#{cur.replacement}}"
             end
 
