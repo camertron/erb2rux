@@ -1,1 +1,79 @@
 #! /usr/bin/env ruby
+
+$:.push(File.expand_path('./lib'))
+
+require 'optparse'
+require 'erb2rux'
+
+require 'pry-byebug'
+
+class Erb2RuxCLI
+  def self.parse(argv)
+    if argv.empty?
+      puts 'Please pass a list of files to transpile, or - to read from STDIN'
+      exit 1
+    end
+
+    options = {
+      extension: '.html.ruxt'
+    }
+
+    parser = OptionParser.new do |opts|
+      opts.banner = "Usage: erb2rux [options] paths"
+
+      oneline(<<~DESC).tap do |desc|
+        The file extension to use for output files. Ignored if reading from STDIN
+        (default: #{options[:extension]}).
+      DESC
+        opts.on('-xEXT', '--extension=EXT', desc) do |ext|
+          options[:extension] = ext
+        end
+      end
+
+      opts.on('-h', '--help', 'Prints this help info') do
+        puts opts
+        exit
+      end
+    end
+
+    parser.parse!(argv)
+    new({ **options, files: argv })
+  end
+
+  def self.oneline(str)
+    str.split("\n").join(' ')
+  end
+
+  def initialize(options)
+    @options = options
+  end
+
+  def stdin?
+    @options[:files].first == '-'
+  end
+
+  def each_file(&block)
+    @options[:files].each do |in_file|
+      ext_idx = in_file.index('.')
+      out_file = "#{in_file[0...ext_idx]}#{extension}"
+      yield in_file, out_file
+    end
+  end
+
+  def extension
+    @options[:extension]
+  end
+end
+
+cli = Erb2RuxCLI.parse(ARGV)
+
+if cli.stdin?
+  puts Erb2Rux::Transformer.transform(STDIN.read)
+  exit 0
+end
+
+cli.each_file do |in_file, out_file|
+  result = Erb2Rux::Transformer.transform(File.read(in_file))
+  File.write(out_file, result)
+  puts "Wrote #{out_file}"
+end
