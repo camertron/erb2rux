@@ -26,9 +26,9 @@ module Erb2Rux
 
         # ActionView adds this final line at the end of all compiled templates,
         # so we need to remmove it.
-        ruby_code = ruby_code.chomp("\n@output_buffer.to_s")
+        ruby_code = ruby_code.chomp('@output_buffer.to_s')
         ast = ::Parser::CurrentRuby.parse(ruby_code)
-        rewrite_children(ast)
+        rewrite(ast)
       end
 
       private
@@ -82,7 +82,13 @@ module Erb2Rux
               # are valid.
               code[component_render.block_end_range] = component_render.close_tag
               leading_ws, body, trailing_ws = ws_split(rewrite(block_body))
-              code[component_render.block_body_range] = "#{leading_ws}{#{body}}#{trailing_ws}"
+
+              code[component_render.block_body_range] = if body.empty?
+                "#{leading_ws}#{trailing_ws}"
+              else
+                "#{leading_ws}{#{body}}#{trailing_ws}"
+              end
+
               code[component_render.send_range] = component_render.open_tag
             else
               # ...otherwise only replace the render call and self-close the tag.
@@ -192,7 +198,7 @@ module Erb2Rux
 
             # A code node inside HTML who's replacement isn't HTML. Needs to be
             # wrapped in Rux curlies.
-            if (cur.stype == :code || cur.stype == nil) && !cur.in_code && !cur.replacement.start_with?('<')
+            if (cur.stype == :code || cur.stype == nil) && !cur.in_code && !tag_start?(cur.replacement)
               cur.replacement = "{#{cur.replacement}}"
             end
 
@@ -330,14 +336,26 @@ module Erb2Rux
           block_arg_start = block_arg_node.location.expression.begin_pos - start
           source.index('|', block_arg_start) + 1
         else
-          # No block.
-          node.location.expression.end_pos - start
+          # If we get to this point and there is no block passed to render,
+          # that means we're looking at the surrounding block Erubi adds
+          # around Ruby code (effectively surrounding it with parens). In such
+          # a case, the "begin" location points to the opening left paren. If
+          # instead there _is_ a block passed to render, the "begin" location
+          # points to the "do" statement. Truly confusing, but here we are.
+          if node.location.begin.source == 'do'
+            node.location.begin.end_pos - start
+          else
+            node.location.expression.end_pos - start
+          end
         end
 
         block_end_range = nil
         block_body_range = nil
 
         if node.type == :block
+          # Use index here to find the first non-whitespace character after the
+          # render call, as well as the first non-whitespace character before
+          # the end of the "end" statement.
           block_body_start = source.index(/\S/, send_stop)
           block_body_end = source.rindex(/\S/, node.location.end.begin_pos - start - 1) + 1
 
@@ -356,19 +374,22 @@ module Erb2Rux
         )
       end
 
+      # Escapes double quotes, then double quotes the result.
       def rb_quote(str)
         return '' if !str || str.empty?
         "\"#{str.gsub("\"", "\\\"")}\""
       end
 
       def send_type_for(node)
-        return unless node.respond_to?(:children)
+        return unless is_node?(node)
 
         receiver_node, method_name, = *node
-        return unless receiver_node.respond_to?(:children)
+        return unless is_node?(receiver_node)
 
-        is_buffer_append = receiver_node&.type == :ivar &&
-          receiver_node&.children&.[](0) == :@output_buffer
+        # Does this node indicate a method called on the @output_buffer
+        # instance variable?
+        is_buffer_append = receiver_node.type == :ivar &&
+          receiver_node.children[0] == :@output_buffer
 
         return unless is_buffer_append
 
