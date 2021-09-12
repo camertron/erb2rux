@@ -5,8 +5,6 @@ $:.push(File.expand_path('./lib'))
 require 'optparse'
 require 'erb2rux'
 
-require 'pry-byebug'
-
 class Erb2RuxCLI
   def self.parse(argv)
     if argv.empty?
