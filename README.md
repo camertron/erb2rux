@@ -26,6 +26,12 @@ To use a different extension, pass the -x option:
 erb2rux -x .html.rux app/views/products/index.html.erb
 ```
 
+Finally, here's the equivalent command using standard in/out:
+
+```bash
+cat app/views/products/index.html.erb | erb2rux -
+```
+
 ## Running Tests
 
 `bundle exec rspec` should do the trick.
