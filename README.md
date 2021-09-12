@@ -1,6 +1,6 @@
 ## erb2rux
 
-![Unit Tests](https://github.com/camertron/erb2rux/actions/workflows/unit_tests.yml/badge.svg?branch=master)
+![Unit Tests](https://github.com/camertron/erb2rux/actions/workflows/unit_tests.yml/badge.svg?branch=main)
 
 erb2rux is an ERB to [Rux](https://github.com/camertron/rux) converter. It's used to translate Rails view files, usually written in ERB (embedded Ruby) syntax, into Rux syntax. Rux allows you to write HTML in your Ruby code, much like JSX allows you to write HTML in your JavaScript. It's great for rendering [view components](https://viewcomponent.org/).
 
