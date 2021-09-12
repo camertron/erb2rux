@@ -7,5 +7,3 @@ group :development, :test do
   gem 'rake'
   gem 'rspec'
 end
-
-gem 'unparser', path: '~/workspace/camertron/unparser'
